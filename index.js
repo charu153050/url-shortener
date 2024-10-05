@@ -1,11 +1,17 @@
 const express = require("express");
 const path = require("path");
-const urlRoute = require("./routes/url");
-const staticRoute = require("./routes/staticRouter");
+const cookieParser = require("cookie-parser");
+const { restrictToLoggedinUserOnly } = require("./middlewares/auth");
+
 const { connectToMongoDb } = require("./connect");
 const URL = require("./models/url");
 const app = express();
 const PORT = 8001;
+
+const urlRoute = require("./routes/url");
+const staticRoute = require("./routes/staticRouter");
+const userRoute = require("./routes/user");
+
 connectToMongoDb("mongodb://127.0.0.1:27017/short-url").then(() =>
   console.log("Mongo Db connected")
 );
@@ -14,9 +20,12 @@ app.set("view engine", "ejs");
 app.set("views", path.resolve("./views"));
 
 app.use(express.json());
-app.use(express.urlencoded({extended:false}))
-app.use('/', staticRoute)
-app.use("/url", urlRoute);
+app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
+
+app.use("/url", restrictToLoggedinUserOnly, urlRoute);
+app.use("/user", userRoute);
+app.use("/", staticRoute);
 
 app.get("/url/:shortId", async (req, res) => {
   const shortId = req.params.shortId;
